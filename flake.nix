@@ -1,25 +1,18 @@
 {
   description = "PSRDADA in a Nix flake";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
-
   outputs = inputs:
     with inputs;
-    {
-      overlays.default = final: prev: {
-        psrdada = self.packages.${prev.system}.default;
-      };
-    } // flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachDefaultSystem (system:
       let
         # Setup nixpkgs
         pkgs = import nixpkgs {
           inherit system;
           config.allowUnfree = true;
         };
-
         # Build PSRDADA
         psrdadaDeriv = (with pkgs;
           stdenv.mkDerivation {
@@ -30,14 +23,14 @@
               rev = "008afa70393ae2df11efba0cc8d0b95cda599c02";
               hash = "sha256-M/SMMKGBdVwd6g4J0DRuV1yi3aM5FXsr93u2XLO9VJE";
             };
-            nativeBuildInputs = [ cmake ninja ];
+            buildInputs = [ cmake ninja ];
             # Optional dependencies
             #++ [ rdma-core hwloc cudatoolkit ];
           });
-
-      in rec {
-        packages.default = psrdadaDeriv;
-        apps = builtins.mapAttrs (name: value: utils.lib.mkApp { drv = value; })
-          packages;
+      in {
+        packages = {
+          default = psrdadaDeriv;
+          psrdada = psrdadaDeriv;
+        };
       });
 }
