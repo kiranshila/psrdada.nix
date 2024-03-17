@@ -3,12 +3,16 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    utils.url = "github:numtide/flake-utils";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, utils }:
-
-    utils.lib.eachDefaultSystem (system:
+  outputs = inputs:
+    with inputs;
+    {
+      overlays.default = final: prev: {
+        psrdada = self.packages.${prev.system}.default;
+      };
+    } // flake-utils.lib.eachDefaultSystem (system:
       let
         # Setup nixpkgs
         pkgs = import nixpkgs {
@@ -17,7 +21,7 @@
         };
 
         # Build PSRDADA
-        psrdada = (with pkgs;
+        psrdadaDeriv = (with pkgs;
           stdenv.mkDerivation {
             pname = "psrdada";
             version = "1.0.0";
@@ -31,11 +35,9 @@
             #++ [ rdma-core hwloc cudatoolkit ];
           });
 
-        packages = {
-          psrdada = psrdada;
-          default = psrdada;
-        };
-
-        # Use the packages in the result
-      in { inherit packages; });
+      in rec {
+        packages.default = psrdadaDeriv;
+        apps = builtins.mapAttrs (name: value: utils.lib.mkApp { drv = value; })
+          packages;
+      });
 }
